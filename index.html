@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Citroën C3 - GPL & Benzina Tracker</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --accent: #38bdf8;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --border: #334155;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+      --success: #10b981;
+      --petrol: #fb923c;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 16px;
+      margin: 0;
+    }
+    .container {
+      max-width: 480px;
+      margin: 0 auto;
+    }
+    .card {
+      background: var(--card);
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 16px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.3);
+    }
+    h2, h3 { margin-top: 0; color: var(--accent); }
+    h2 { font-size: 1.25rem; display: flex; align-items: center; gap: 8px; }
+    h3 { font-size: 1rem; color: var(--muted); margin-bottom: 12px; }
+    label { display: block; margin: 12px 0 4px; font-size: 0.85rem; color: var(--muted); }
+    input, select {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: #090d16;
+      color: #fff;
+      font-size: 1rem;
+    }
+    .btn {
+      margin-top: 14px;
+      width: 100%;
+      padding: 12px;
+      background: var(--accent);
+      color: #042f2e;
+      border: none;
+      border-radius: 10px;
+      font-weight: 700;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+    .btn-petrol {
+      background: var(--petrol);
+      color: #431407;
+      margin-top: 8px;
+    }
+    .btn-secondary {
+      background: #334155;
+      color: var(--text);
+      font-size: 0.85rem;
+      padding: 10px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      flex: 1;
+    }
+    .tank-bar-bg {
+      background: #090d16;
+      border-radius: 8px;
+      height: 18px;
+      overflow: hidden;
+      margin: 12px 0 6px;
+      border: 1px solid var(--border);
+    }
+    .tank-bar-fill {
+      height: 100%;
+      width: 100%;
+      background: var(--success);
+      transition: width 0.3s, background-color 0.3s;
+    }
+    .stat-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 12px;
+    }
+    .stat-box {
+      background: #090d16;
+      padding: 10px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      text-align: center;
+    }
+    .stat-box .val {
+      font-size: 1.3rem;
+      font-weight: bold;
+      color: var(--accent);
+    }
+    .stat-box .sub {
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+    .alert-banner {
+      margin-top: 12px;
+      padding: 12px 14px;
+      border-radius: 10px;
+      font-size: 0.88rem;
+      font-weight: 500;
+      line-height: 1.4;
+    }
+    .badge-cycle {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 6px;
+      background: #334155;
+      font-size: 0.8rem;
+      font-weight: bold;
+      color: #e2e8f0;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+      margin-top: 10px;
+    }
+    th, td {
+      padding: 8px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+    th { color: var(--muted); }
+    .backup-container {
+      display: flex;
+      gap: 8px;
+      margin-top: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <!-- SEZIONE 1: STATO QUOTIDIANO -->
+    <div class="card">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h2>🔍 Serbatoio Oggi</h2>
+        <span class="badge-cycle" id="badgePieniBenzina">Pieno GPL 0 / 4</span>
+      </div>
+
+      <!-- Banner Avviso Manutenzione Benzina -->
+      <div id="bannerBenzina" class="alert-banner" style="display:none; background: #451a03; border-left: 4px solid var(--petrol); color: #fed7aa;">
+        <strong>⛽ Promemoria Ciclo Benzina:</strong><br>
+        Hai fatto 4 pieni a GPL! Fai circa <strong>30–50 km a benzina</strong> per pulire gli iniettori.
+        <button class="btn btn-petrol" onclick="confermaCicloBenzina()">✔ Ho fatto il giro a benzina</button>
+      </div>
+
+      <p style="font-size: 0.85rem; color: var(--muted); margin: 12px 0 6px;">
+        Km segnati sul Trip parziale:
+      </p>
+      <input type="number" id="tripAttuale" placeholder="es. 240" oninput="aggiornaStatoQuotidiano()">
+
+      <div class="tank-bar-bg">
+        <div id="tankFill" class="tank-bar-fill" style="width: 100%;"></div>
+      </div>
+      <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:var(--muted);">
+        <span>Vuoto (0 km)</span>
+        <span id="labelMaxKm">Pieno (~420 km)</span>
+      </div>
+
+      <div class="stat-grid">
+        <div class="stat-box">
+          <div class="val" id="kmResidui">--</div>
+          <div class="sub">Km ancora disponibili</div>
+        </div>
+        <div class="stat-box">
+          <div class="val" id="litriResidui">--</div>
+          <div class="sub">Litri stimati rimasti</div>
+        </div>
+      </div>
+
+      <div id="bannerAvvisoGPL" class="alert-banner" style="display:none; margin-top: 12px; text-align:center;"></div>
+    </div>
+
+    <!-- SEZIONE 2: REGISTRAZIONE PIENO -->
+    <div class="card">
+      <h2>⛽ Registra Pieno GPL</h2>
+      <label>Km totali percorsi col vecchio pieno (Trip finale):</label>
+      <input type="number" id="kmFatti" placeholder="es. 410">
+
+      <label>Modalità inserimento:</label>
+      <select id="modalitaInput" onchange="toggleModalita()">
+        <option value="euro">Euro spesi (€) + Prezzo al litro</option>
+        <option value="litri">Litri effettivi erogati</option>
+      </select>
+
+      <div id="boxEuro">
+        <label>Importo pagato (€):</label>
+        <input type="number" id="euroSpesi" step="0.01" placeholder="es. 24.50">
+        <label>Prezzo GPL (€/L):</label>
+        <input type="number" id="prezzoGPL" step="0.001" placeholder="es. 0.719">
+      </div>
+
+      <div id="boxLitri" style="display:none;">
+        <label>Litri erogati:</label>
+        <input type="number" id="litriFatti" step="0.1" placeholder="es. 33.2">
+      </div>
+
+      <button class="btn" onclick="salvaPieno()">Salva Pieno & Resetta Trip</button>
+      <div style="font-size: 0.75rem; color: var(--muted); margin-top: 8px; text-align: center;">
+        💡 Ricordati di azzerare il contachilometri parziale tenendo premuto il tasto destro sul cruscotto!
+      </div>
+    </div>
+
+    <!-- SEZIONE 3: CRONOLOGIA E BACKUP -->
+    <div class="card">
+      <h3>📊 Cronologia Pieni & Backup</h3>
+      <div style="display:flex; justify-content:space-between; margin-bottom: 8px;">
+        <span style="font-size: 0.9rem;">Media storica reale:</span>
+        <strong id="mediaStorica" style="color:var(--accent);">12.50 km/l</strong>
+      </div>
+
+      <div style="overflow-x:auto;">
+        <table id="tabellaStorico">
+          <thead>
+            <tr>
+              <th>Data</th>
+              <th>Km</th>
+              <th>Litri</th>
+              <th>Resa</th>
+            </tr>
+          </thead>
+          <tbody id="corpoTabella"></tbody>
+        </table>
+      </div>
+
+      <!-- Pulsanti di Backup e Sicurezza -->
+      <div class="backup-container">
+        <button class="btn-secondary" onclick="esportaDati()">💾 Scarica Backup</button>
+        <button class="btn-secondary" onclick="document.getElementById('fileInput').click()">📂 Ripristina Backup</button>
+        <input type="file" id="fileInput" style="display:none" accept=".json" onchange="importaDati(event)">
+      </div>
+
+      <button class="btn-secondary" style="width:100%; margin-top: 10px; background: transparent; border: 1px solid #475569;" onclick="svuotaCronologia()">Cancella tutti i dati</button>
+    </div>
+
+  </div>
+
+  <script>
+    const CAPACITA_EFFETTIVA = 33.5;
+    const SOGLIA_PIENI_BENZINA = 4;
+    let cronologia = JSON.parse(localStorage.getItem('c3_gpl_data')) || [];
+    let pieniDaUltimaBenzina = parseInt(localStorage.getItem('c3_pieni_benzina') || '0', 10);
+
+    function toggleModalita() {
+      const mode = document.getElementById('modalitaInput').value;
+      document.getElementById('boxEuro').style.display = mode === 'euro' ? 'block' : 'none';
+      document.getElementById('boxLitri').style.display = mode === 'litri' ? 'block' : 'none';
+    }
+
+    function getMediaConsumo() {
+      if (cronologia.length === 0) return 12.5;
+      const totalKm = cronologia.reduce((acc, row) => acc + row.km, 0);
+      const totalLitri = cronologia.reduce((acc, row) => acc + row.litri, 0);
+      return totalKm / totalLitri;
+    }
+
+    function aggiornaStatoQuotidiano() {
+      const kmAttuali = parseFloat(document.getElementById('tripAttuale').value) || 0;
+      const media = getMediaConsumo();
+      const kmAutonomiaTotale = Math.round(CAPACITA_EFFETTIVA * media);
+
+      document.getElementById('labelMaxKm').innerText = `Pieno (~${kmAutonomiaTotale} km)`;
+
+      const litriConsumati = kmAttuali / media;
+      const litriRimasti = Math.max(0, CAPACITA_EFFETTIVA - litriConsumati);
+      const kmRimasti = Math.max(0, Math.round(litriRimasti * media));
+      const percRimasta = Math.max(0, Math.min(100, (litriRimasti / CAPACITA_EFFETTIVA) * 100));
+
+      document.getElementById('kmResidui').innerText = kmRimasti;
+      document.getElementById('litriResidui').innerText = litriRimasti.toFixed(1);
+
+      const fill = document.getElementById('tankFill');
+      fill.style.width = percRimasta + '%';
+
+      const bannerGPL = document.getElementById('bannerAvvisoGPL');
+      if (kmRimasti <= 40 && kmAttuali > 0) {
+        fill.style.backgroundColor = 'var(--danger)';
+        bannerGPL.style.display = 'block';
+        bannerGPL.style.background = '#450a0a';
+        bannerGPL.style.color = '#fca5a5';
+        bannerGPL.innerText = '🚨 Riserva quasi terminata: fai il pieno oggi o passerai a benzina.';
+      } else if (kmRimasti <= 90 && kmAttuali > 0) {
+        fill.style.backgroundColor = 'var(--warning)';
+        bannerGPL.style.display = 'block';
+        bannerGPL.style.background = '#451a03';
+        bannerGPL.style.color = '#fcd34d';
+        bannerGPL.innerText = '⚠ In riserva: pianifica il rifornimento entro 50-70 km.';
+      } else {
+        fill.style.backgroundColor = 'var(--success)';
+        bannerGPL.style.display = 'none';
+      }
+
+      aggiornaReminderBenzina();
+    }
+
+    function aggiornaReminderBenzina() {
+      const badge = document.getElementById('badgePieniBenzina');
+      badge.innerText = `Pieno GPL ${pieniDaUltimaBenzina} / ${SOGLIA_PIENI_BENZINA}`;
+
+      const bannerBenzina = document.getElementById('bannerBenzina');
+      if (pieniDaUltimaBenzina >= SOGLIA_PIENI_BENZINA) {
+        bannerBenzina.style.display = 'block';
+        badge.style.background = 'var(--petrol)';
+        badge.style.color = '#431407';
+      } else {
+        bannerBenzina.style.display = 'none';
+        badge.style.background = '#334155';
+        badge.style.color = '#e2e8f0';
+      }
+    }
+
+    function confermaCicloBenzina() {
+      pieniDaUltimaBenzina = 0;
+      localStorage.setItem('c3_pieni_benzina', pieniDaUltimaBenzina);
+      aggiornaReminderBenzina();
+      alert("Ottimo! Contatore ciclo benzina azzerato.");
+    }
+
+    function salvaPieno() {
+      const km = parseFloat(document.getElementById('kmFatti').value);
+      const mode = document.getElementById('modalitaInput').value;
+      let litri = 0;
+
+      if (!km || km <= 0) {
+        alert("Inserisci i km percorsi sul Trip!");
+        return;
+      }
+
+      if (mode === 'euro') {
+        const euro = parseFloat(document.getElementById('euroSpesi').value);
+        const prezzo = parseFloat(document.getElementById('prezzoGPL').value);
+        if (!euro || !prezzo || prezzo <= 0) {
+          alert("Inserisci importo in euro e prezzo al litro corretti.");
+          return;
+        }
+        litri = parseFloat((euro / prezzo).toFixed(2));
+      } else {
+        litri = parseFloat(document.getElementById('litriFatti').value);
+        if (!litri || litri <= 0) {
+          alert("Inserisci i litri erogati.");
+          return;
+        }
+      }
+
+      const resa = (km / litri).toFixed(2);
+      const dataOggi = new Date().toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' });
+
+      cronologia.unshift({ data: dataOggi, km: km, litri: litri, resa: resa });
+      localStorage.setItem('c3_gpl_data', JSON.stringify(cronologia));
+
+      pieniDaUltimaBenzina++;
+      localStorage.setItem('c3_pieni_benzina', pieniDaUltimaBenzina);
+
+      // Reset campi
+      document.getElementById('kmFatti').value = '';
+      document.getElementById('euroSpesi').value = '';
+      document.getElementById('litriFatti').value = '';
+      document.getElementById('tripAttuale').value = '0';
+
+      renderTabella();
+      aggiornaStatoQuotidiano();
+      alert(`Pieno salvato! Resa: ${resa} km/l.\nRicordati di azzerare il Trip sul cruscotto!`);
+    }
+
+    function renderTabella() {
+      const tbody = document.getElementById('corpoTabella');
+      tbody.innerHTML = '';
+      
+      cronologia.forEach(item => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${item.data}</td>
+          <td>${item.km} km</td>
+          <td>${item.litri} L</td>
+          <td><strong>${item.resa}</strong> km/l</td>
+        `;
+        tbody.appendChild(row);
+      });
+
+      const media = getMediaConsumo().toFixed(2);
+      document.getElementById('mediaStorica').innerText = `${media} km/l`;
+    }
+
+    /* FUNZIONI BACKUP */
+    function esportaDati() {
+      const backup = {
+        c3_gpl_data: localStorage.getItem('c3_gpl_data') || '[]',
+        c3_pieni_benzina: localStorage.getItem('c3_pieni_benzina') || '0'
+      };
+      const blob = new Blob([JSON.stringify(backup)], { type: "application/json" });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `backup_gpl_c3_${new Date().toISOString().slice(0,10)}.json`;
+      a.click();
+    }
+
+    function importaDati(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const data = JSON.parse(e.target.result);
+          if (data.c3_gpl_data) localStorage.setItem('c3_gpl_data', data.c3_gpl_data);
+          if (data.c3_pieni_benzina) localStorage.setItem('c3_pieni_benzina', data.c3_pieni_benzina);
+          cronologia = JSON.parse(data.c3_gpl_data || '[]');
+          pieniDaUltimaBenzina = parseInt(data.c3_pieni_benzina || '0', 10);
+          renderTabella();
+          aggiornaStatoQuotidiano();
+          alert("✅ Dati ripristinati con successo!");
+        } catch (err) {
+          alert("File non valido o corrotto!");
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    function svuotaCronologia() {
+      if (confirm("Vuoi davvero cancellare tutti i dati registrati?")) {
+        cronologia = [];
+        pieniDaUltimaBenzina = 0;
+        localStorage.removeItem('c3_gpl_data');
+        localStorage.removeItem('c3_pieni_benzina');
+        renderTabella();
+        aggiornaStatoQuotidiano();
+      }
+    }
+
+    // Avvio al caricamento
+    renderTabella();
+    aggiornaStatoQuotidiano();
+  </script>
+</body>
+</html>
